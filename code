@@ -1,0 +1,71 @@
+
+# SPEAKER & EMOTION RECOGNITION
+# (NO AUDIO FILES, NO MIC, NO UPLOADS)
+
+import numpy as np
+import librosa
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+# 1. SYNTHETIC SPEECH GENERATION
+# Different frequencies simulate different speakers/emotions
+
+def generate_speech_signal(freq, duration=3, sr=22050):
+    t = np.linspace(0, duration, int(sr * duration))
+    signal = 0.5 * np.sin(2 * np.pi * freq * t)
+    signal += 0.05 * np.random.randn(len(signal))  # noise
+    return signal, sr
+
+# 2. FEATURE EXTRACTION (MFCC)
+
+def extract_mfcc_from_signal(signal, sr, n_mfcc=40):
+    mfcc = librosa.feature.mfcc(y=signal, sr=sr, n_mfcc=n_mfcc)
+    return np.mean(mfcc.T, axis=0)
+
+# 3. CREATE DATASET (SIMULATED)
+
+# Speaker signals
+speaker_signals = [
+    generate_speech_signal(120),  # Speaker 1 (low pitch)
+    generate_speech_signal(220)   # Speaker 2 (high pitch)
+]
+speaker_labels = ["Speaker_1", "Speaker_2"]
+
+# Emotion signals
+emotion_signals = [
+    generate_speech_signal(300),  # Happy
+    generate_speech_signal(90),   # Sad
+    generate_speech_signal(450)   # Angry
+]
+emotion_labels = ["Happy", "Sad", "Angry"]
+
+# Extract features
+X_speaker = [extract_mfcc_from_signal(sig, sr) for sig, sr in speaker_signals]
+y_speaker = speaker_labels
+
+X_emotion = [extract_mfcc_from_signal(sig, sr) for sig, sr in emotion_signals]
+y_emotion = emotion_labels
+
+# 4. TRAIN MODELS
+speaker_model = make_pipeline(
+    StandardScaler(),
+    SVC(kernel="linear")
+)
+speaker_model.fit(X_speaker, y_speaker)
+
+emotion_model = RandomForestClassifier(n_estimators=100)
+emotion_model.fit(X_emotion, y_emotion)
+
+# 5. TEST ON NEW SYNTHETIC SPEECH
+test_signal, test_sr = generate_speech_signal(210)  # unknown input
+test_features = extract_mfcc_from_signal(test_signal, test_sr)
+
+predicted_speaker = speaker_model.predict([test_features])[0]
+predicted_emotion = emotion_model.predict([test_features])[0]
+
+# 6. OUTPUT
+print("----- RESULTS -----")
+print("Predicted Speaker:", predicted_speaker)
+print("Predicted Emotion:", predicted_emotion)
